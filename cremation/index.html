@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>우리 동네 화장장 찾기</title>
+  <link rel="stylesheet" href="style.css?v=20260606-4" />
+</head>
+<body>
+  <main class="interactive" aria-label="우리 동네 화장장 찾기 인터랙티브">
+    <header class="interactive-header">
+      <div>
+        <p class="kicker">INTERACTIVE</p>
+        <h1>우리 동네에서 가장 가까운 화장장은?</h1>
+        <p class="description">
+          시·군·구를 입력하면 가장 가까운 시설과 거리, 관내·관외 화장 비용을 확인할 수 있습니다.
+        </p>
+      </div>
+      <span class="data-date">데이터 업데이트 2026.06.06</span>
+    </header>
+
+    <section class="search-section" aria-label="지역 검색">
+      <div class="search-box">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="6.5"></circle>
+            <path d="m16 16 4 4"></path>
+          </svg>
+        </span>
+        <label class="sr-only" for="regionInput">시·군·구 입력</label>
+        <input
+          id="regionInput"
+          type="search"
+          placeholder="예: 양주, 의정부, 포천"
+          autocomplete="off"
+        />
+        <button id="searchButton" type="button">검색</button>
+      </div>
+
+      <div class="search-meta">
+        <div class="example-list" aria-label="검색 예시">
+          <span>빠른 검색</span>
+          <button class="example-chip" type="button" data-region="양주">양주</button>
+          <button class="example-chip" type="button" data-region="의정부">의정부</button>
+          <button class="example-chip" type="button" data-region="포천">포천</button>
+        </div>
+        <p class="basis-note">출발지는 각 시·군청 본청 기준</p>
+      </div>
+    </section>
+
+    <p id="errorMessage" class="error-message" role="alert"></p>
+
+    <section id="resultSection" class="result-section hidden" aria-live="polite">
+      <div class="result-header">
+        <div>
+          <p class="result-label">검색 결과</p>
+          <h2 id="regionName"></h2>
+        </div>
+        <span class="result-badge">자동차 이동 기준</span>
+      </div>
+
+      <article class="primary-result">
+        <div>
+          <p>가장 가까운 화장장</p>
+          <strong id="nearestFacility"></strong>
+        </div>
+        <div class="primary-distance">
+          <span>이동 거리</span>
+          <strong id="distance"></strong>
+        </div>
+      </article>
+
+      <div class="metric-grid">
+        <article class="metric-card">
+          <p>지역 내 화장시설</p>
+          <strong id="facilityCount"></strong>
+        </article>
+        <article class="metric-card grade-card">
+          <p>접근성 등급</p>
+          <strong id="grade"></strong>
+        </article>
+      </div>
+
+      <div id="feeSummary" class="fee-summary hidden">
+        <div class="fee-heading">
+          <span class="fee-label">예상 화장 비용</span>
+          <span id="feeType" class="fee-type"></span>
+        </div>
+        <strong id="applicableFee"></strong>
+        <p id="feeComparison"></p>
+        <p id="feeSource" class="fee-source"></p>
+      </div>
+
+      <div class="comment-box">
+        <span aria-hidden="true">i</span>
+        <p id="comment" class="comment"></p>
+      </div>
+
+      <details class="facility-section">
+        <summary>
+          <span>시설 상세 정보</span>
+          <span class="summary-action">펼쳐보기</span>
+        </summary>
+        <div id="facilityList" class="facility-list"></div>
+      </details>
+    </section>
+
+    <aside class="methodology" aria-label="데이터 출처 및 기준">
+      <details>
+        <summary>데이터 출처와 산정 기준</summary>
+        <div class="methodology-content">
+          <p><b>시설 현황</b> 보건복지부 e보건복지현황 전국 화장시설 현황</p>
+          <p><b>요금</b> 각 지방자치단체 및 시설공단 공개 사용료 중 일반 성인 시신 기준</p>
+          <p><b>거리·시간</b> 각 시·군청 본청에서 가장 가까운 시설까지의 자동차 경로 조사</p>
+          <p><b>접근성 등급</b> 지역 내 시설이 있으면 ‘양호’, 20km 이하는 ‘보통’, 20km 초과~40km 이하는 ‘취약’, 40km 초과는 ‘매우 취약’</p>
+          <p class="caution">실제 요금과 이동시간은 거주 요건, 감면 대상, 도로 상황, 예약 가능 여부에 따라 달라질 수 있습니다.</p>
+        </div>
+      </details>
+    </aside>
+  </main>
+
+  <script src="script.js?v=20260606-4"></script>
+</body>
+</html>

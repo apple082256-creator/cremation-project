@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관내·관외 화장 비용 격차</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800;900&display=swap");
+
+    :root {
+      --ink: #171a18;
+      --muted: #69706b;
+      --line: #dfe3df;
+      --green: #245f47;
+      --green-soft: #dfece5;
+      --orange: #e45b32;
+      --orange-soft: #f9e3dc;
+      --paper: #f4f5f2;
+      --white: #fff;
+      --progress: 0%;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      margin: 0;
+      padding: 24px;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Noto Sans KR", sans-serif;
+      word-break: keep-all;
+    }
+
+    .graphic {
+      width: min(100%, 760px);
+      padding: 34px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--white);
+      box-shadow: 0 18px 60px rgba(24, 35, 28, 0.07);
+    }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(30px, 6vw, 46px);
+      line-height: 1.18;
+      letter-spacing: -0.055em;
+    }
+
+    .intro {
+      margin: 15px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    .scope-switch {
+      display: inline-grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px;
+      margin-top: 20px;
+      padding: 3px;
+      border-radius: 10px;
+      background: #ecefeb;
+    }
+
+    .scope-button {
+      min-width: 92px;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .scope-button.active {
+      background: var(--white);
+      color: var(--green);
+      box-shadow: 0 1px 5px rgba(25, 35, 29, 0.12);
+    }
+
+    .visual {
+      position: relative;
+      height: 310px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      margin-top: 34px;
+      padding: 0 24px 34px;
+      border-bottom: 1px solid #bac1bc;
+      overflow: visible;
+    }
+
+    .guide {
+      position: absolute;
+      right: 24px;
+      left: 24px;
+      border-top: 1px dashed #e4e7e4;
+    }
+
+    .guide span {
+      position: absolute;
+      top: -18px;
+      right: 0;
+      color: #a0a6a1;
+      font-size: 9px;
+    }
+
+    .guide-100 {
+      bottom: 34px;
+    }
+
+    .guide-50 {
+      bottom: 155px;
+    }
+
+    .guide-0 {
+      bottom: 276px;
+    }
+
+    .bar-wrap {
+      position: relative;
+      z-index: 1;
+      width: min(54%, 330px);
+      height: 242px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .bar {
+      position: relative;
+      width: min(72%, 190px);
+      height: 15.3%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 15px;
+      border-radius: 14px 14px 3px 3px;
+      background: linear-gradient(180deg, #3b765d, var(--green));
+      color: var(--white);
+      box-shadow: 0 12px 25px rgba(36, 95, 71, 0.18);
+      transition:
+        height 80ms linear,
+        background 120ms linear,
+        box-shadow 120ms linear;
+    }
+
+    .bar strong {
+      position: absolute;
+      top: -42px;
+      left: 50%;
+      z-index: 3;
+      padding: 7px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--white);
+      color: var(--ink);
+      font-size: clamp(18px, 4vw, 27px);
+      line-height: 1;
+      letter-spacing: -0.05em;
+      white-space: nowrap;
+      box-shadow: 0 4px 14px rgba(24, 29, 26, 0.1);
+      transform: translateX(-50%);
+    }
+
+    .jump-label {
+      position: absolute;
+      top: 18px;
+      right: 28px;
+      z-index: 2;
+      padding: 8px 11px;
+      border-radius: 999px;
+      background: var(--orange-soft);
+      color: #a83c1e;
+      font-size: 11px;
+      font-weight: 800;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+
+    .jump-label.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .controls {
+      margin-top: 28px;
+    }
+
+    .side-labels {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+
+    .side {
+      width: 46%;
+    }
+
+    .side:last-child {
+      text-align: right;
+    }
+
+    .side span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .side strong {
+      display: block;
+      margin-top: 3px;
+      font-size: 17px;
+      letter-spacing: -0.03em;
+    }
+
+    .side:last-child strong {
+      color: var(--orange);
+    }
+
+    .slider-row {
+      position: relative;
+      height: 34px;
+      display: flex;
+      align-items: center;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      margin: 0;
+      appearance: none;
+      border-radius: 999px;
+      outline: none;
+      background:
+        linear-gradient(
+          90deg,
+          var(--green) 0%,
+          var(--orange) var(--progress),
+          #dfe3df var(--progress),
+          #dfe3df 100%
+        );
+      cursor: grab;
+    }
+
+    input[type="range"]:active {
+      cursor: grabbing;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      width: 29px;
+      height: 29px;
+      appearance: none;
+      border: 4px solid var(--white);
+      border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 2px 10px rgba(24, 29, 26, 0.28);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 21px;
+      height: 21px;
+      border: 4px solid var(--white);
+      border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 2px 10px rgba(24, 29, 26, 0.28);
+    }
+
+    .instruction {
+      margin: 10px 0 0;
+      text-align: center;
+      color: #89908b;
+      font-size: 10px;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      margin-top: 27px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--line);
+      overflow: hidden;
+    }
+
+    .summary-item {
+      padding: 17px;
+      background: #fafbfa;
+    }
+
+    .summary-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .summary-item strong {
+      display: block;
+      margin-top: 4px;
+      font-size: 20px;
+      letter-spacing: -0.04em;
+    }
+
+    .summary-item:nth-child(n + 2) strong {
+      color: var(--orange);
+    }
+
+    .source {
+      margin: 18px 0 0;
+      color: #929893;
+      font-size: 9px;
+      line-height: 1.65;
+    }
+
+    @media (max-width: 520px) {
+      body {
+        display: block;
+        padding: 0;
+        background: var(--white);
+      }
+
+      .graphic {
+        padding: 26px 18px;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      .intro {
+        font-size: 13px;
+      }
+
+      .visual {
+        height: 280px;
+        margin-top: 24px;
+        padding-right: 4px;
+        padding-left: 4px;
+      }
+
+      .guide {
+        right: 4px;
+        left: 4px;
+      }
+
+      .bar-wrap {
+        width: 72%;
+      }
+
+      .jump-label {
+        right: 4px;
+      }
+
+      .side strong {
+        font-size: 14px;
+      }
+
+      .summary-item {
+        padding: 14px;
+      }
+
+      .summary-item strong {
+        font-size: 15px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="graphic">
+    <header>
+      <p class="eyebrow">CREMATION FEE GAP</p>
+      <h1>주소가 달라지면<br />화장 비용은 얼마나 뛸까?</h1>
+      <p class="intro">
+        <span id="scopeDescription">전국 공설 화장시설 60곳</span>의 일반 성인 요금을 비교했습니다.
+        슬라이더를 오른쪽으로 밀어 관외 주민이 부담하는 평균 비용을 확인해보세요.
+      </p>
+      <div class="scope-switch" role="group" aria-label="비교 지역 선택">
+        <button class="scope-button active" type="button" data-scope="nationwide">전국 평균</button>
+        <button class="scope-button" type="button" data-scope="capital">수도권 평균</button>
+      </div>
+    </header>
+
+    <section class="visual" aria-label="관내와 관외 화장 비용 변화 그래프">
+      <div class="guide guide-0"><span>100만 원</span></div>
+      <div class="guide guide-50"><span>50만 원</span></div>
+      <div class="guide guide-100"><span>0원</span></div>
+
+      <span id="jumpLabel" class="jump-label">평균 6.5배</span>
+
+      <div class="bar-wrap">
+        <div id="costBar" class="bar">
+          <strong id="currentCost">100,300원</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="side-labels">
+        <div class="side">
+          <span>시설 관할 지역 거주</span>
+          <strong>관내 주민</strong>
+        </div>
+        <div class="side">
+          <span>타지역 시설 이용</span>
+          <strong>관외 주민</strong>
+        </div>
+      </div>
+
+      <div class="slider-row">
+        <input
+          id="feeSlider"
+          type="range"
+          min="0"
+          max="100"
+          value="0"
+          aria-label="관내에서 관외로 이동하며 화장 비용 비교"
+        />
+      </div>
+      <p class="instruction">손잡이를 오른쪽으로 밀어보세요</p>
+    </section>
+
+    <section class="summary" aria-label="평균 화장 비용 요약">
+      <div class="summary-item">
+        <span id="insideLabel">전국 평균 관내</span>
+        <strong id="insideAverage">100,300원</strong>
+      </div>
+      <div class="summary-item">
+        <span id="outsideLabel">전국 평균 관외</span>
+        <strong id="outsideAverage">655,117원</strong>
+      </div>
+      <div class="summary-item">
+        <span>평균 비용 차이</span>
+        <strong id="feeDifference">554,817원</strong>
+      </div>
+    </section>
+
+    <p id="sourceNote" class="source">
+      자료: 전국 공설 화장시설 공개 사용료. 관내·관외 일반 성인 시신 요금이 모두 확인되는 60곳 기준.
+      시설별 공동 이용 협약, 감면 대상 및 거주 요건에 따라 실제 적용 금액은 달라질 수 있습니다.
+    </p>
+  </main>
+
+  <script>
+    const scopeData = {
+      nationwide: {
+        label: "전국",
+        description: "전국 공설 화장시설 60곳",
+        inside: 100300,
+        outside: 655117,
+        difference: 554817,
+        ratio: 6.5,
+        source: "자료: 전국 공설 화장시설 공개 사용료. 관내·관외 일반 성인 시신 요금이 모두 확인되는 60곳 기준."
+      },
+      capital: {
+        label: "수도권",
+        description: "서울·경기·인천 공설 화장시설 7곳",
+        inside: 122857,
+        outside: 985714,
+        difference: 862857,
+        ratio: 8.0,
+        source: "자료: 서울·경기·인천 공설 화장시설 공개 사용료. 관내·관외 일반 성인 시신 요금이 모두 확인되는 7곳 기준."
+      }
+    };
+    const CHART_MAX = 1000000;
+
+    const slider = document.getElementById("feeSlider");
+    const costBar = document.getElementById("costBar");
+    const currentCost = document.getElementById("currentCost");
+    const jumpLabel = document.getElementById("jumpLabel");
+    const scopeButtons = document.querySelectorAll(".scope-button");
+    const scopeDescription = document.getElementById("scopeDescription");
+    const insideLabel = document.getElementById("insideLabel");
+    const outsideLabel = document.getElementById("outsideLabel");
+    const insideAverage = document.getElementById("insideAverage");
+    const outsideAverage = document.getElementById("outsideAverage");
+    const feeDifference = document.getElementById("feeDifference");
+    const sourceNote = document.getElementById("sourceNote");
+    let currentScope = "nationwide";
+
+    const formatWon = (value) =>
+      `${Math.round(value).toLocaleString("ko-KR")}원`;
+
+    function updateGraphic() {
+      const data = scopeData[currentScope];
+      const progress = Number(slider.value) / 100;
+      const cost =
+        data.inside + (data.outside - data.inside) * progress;
+      const barHeight = Math.max(12, (cost / CHART_MAX) * 100);
+      const red = Math.round(36 + (228 - 36) * progress);
+      const green = Math.round(95 + (91 - 95) * progress);
+      const blue = Math.round(71 + (50 - 71) * progress);
+
+      document.documentElement.style.setProperty(
+        "--progress",
+        `${slider.value}%`
+      );
+      costBar.style.height = `${barHeight}%`;
+      costBar.style.background =
+        `linear-gradient(180deg, rgb(${red + 14}, ${green + 18}, ${blue + 12}), rgb(${red}, ${green}, ${blue}))`;
+      currentCost.textContent = formatWon(cost);
+      jumpLabel.textContent = `평균 ${data.ratio.toFixed(1)}배`;
+      jumpLabel.classList.toggle("visible", progress > 0.82);
+    }
+
+    function changeScope(scope) {
+      currentScope = scope;
+      const data = scopeData[scope];
+
+      scopeButtons.forEach((button) => {
+        button.classList.toggle("active", button.dataset.scope === scope);
+      });
+      scopeDescription.textContent = data.description;
+      insideLabel.textContent = `${data.label} 평균 관내`;
+      outsideLabel.textContent = `${data.label} 평균 관외`;
+      insideAverage.textContent = formatWon(data.inside);
+      outsideAverage.textContent = formatWon(data.outside);
+      feeDifference.textContent = formatWon(data.difference);
+      sourceNote.textContent =
+        `${data.source} 시설별 공동 이용 협약, 감면 대상 및 거주 요건에 따라 실제 적용 금액은 달라질 수 있습니다.`;
+      slider.value = 0;
+      updateGraphic();
+    }
+
+    scopeButtons.forEach((button) => {
+      button.addEventListener("click", () => changeScope(button.dataset.scope));
+    });
+    slider.addEventListener("input", updateGraphic);
+    changeScope("nationwide");
+  </script>
+</body>
+</html>

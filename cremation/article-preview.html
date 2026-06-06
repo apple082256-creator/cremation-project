@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>뉴스 기사 삽입 예시</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: #171717;
+      font-family: Georgia, "Noto Serif KR", serif;
+    }
+
+    .article {
+      width: min(100% - 40px, 720px);
+      margin: 0 auto;
+      padding: 72px 0;
+    }
+
+    .category {
+      margin: 0 0 16px;
+      color: #176342;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(36px, 8vw, 56px);
+      line-height: 1.16;
+      letter-spacing: -0.045em;
+    }
+
+    .lead {
+      margin: 24px 0 0;
+      color: #555;
+      font-size: 19px;
+      line-height: 1.75;
+    }
+
+    .byline {
+      margin: 22px 0 44px;
+      color: #888;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+    }
+
+    .interactive-frame {
+      width: 100%;
+      min-height: 360px;
+      display: block;
+      margin: 0 0 48px;
+      border: 0;
+      overflow: hidden;
+    }
+
+    h2 {
+      margin: 42px 0 16px;
+      font-size: 25px;
+      line-height: 1.4;
+    }
+
+    .article-body p {
+      margin: 0 0 24px;
+      font-size: 17px;
+      line-height: 1.9;
+    }
+
+    @media (max-width: 520px) {
+      .article {
+        width: 100%;
+        padding: 42px 0;
+      }
+
+      .article-header,
+      .article-body {
+        padding: 0 20px;
+      }
+
+      .interactive-frame {
+        margin-bottom: 36px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <article class="article">
+    <header class="article-header">
+      <p class="category">데이터 저널리즘</p>
+      <h1>떠나는 길마저 멀었다<br />경기 북부의 화장장 공백</h1>
+      <p class="lead">
+        사는 곳에 따라 마지막 길의 거리와 비용은 크게 달라진다.
+        우리 동네에서 가장 가까운 화장장은 어디인지 직접 확인해봤다.
+      </p>
+      <p class="byline">2026년 6월 6일 · 데이터취재팀</p>
+    </header>
+
+    <iframe
+      id="cremationInteractive"
+      class="interactive-frame"
+      src="index.html"
+      title="우리 동네에서 가장 가까운 화장장 찾기"
+      scrolling="no"
+      loading="eager"
+    ></iframe>
+
+    <div class="article-body">
+      <h2>시설이 없는 지역, 거리뿐 아니라 비용도 늘었다</h2>
+      <p>
+        경기 북부 여러 시·군에는 자체 화장시설이 없다. 주민들은 서울이나 강원 등
+        다른 지방자치단체의 시설까지 이동해야 하고, 이 과정에서 관외 요금을 적용받는다.
+      </p>
+      <p>
+        양주시청을 기준으로 가장 가까운 서울시립승화원까지는 자동차로 약 22km다.
+        서울 주민에게 적용되는 관내 요금과 양주 주민이 부담하는 관외 요금 사이에도 큰 차이가 있다.
+      </p>
+    </div>
+  </article>
+
+  <script>
+    const interactiveFrame = document.getElementById("cremationInteractive");
+
+    window.addEventListener("message", (event) => {
+      if (
+        event.source !== interactiveFrame.contentWindow ||
+        event.data?.type !== "cremation-interactive-resize"
+      ) {
+        return;
+      }
+
+      interactiveFrame.style.height = `${event.data.height}px`;
+    });
+  </script>
+</body>
+</html>
