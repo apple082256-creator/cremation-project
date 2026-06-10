@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전국 화장장 관할 구역 지도</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif; background:#f5f5f5; }
+
+  #header {
+    position:fixed; top:0; left:0; right:0; z-index:1000;
+    background:#fff; padding:10px 20px;
+    border-bottom:1px solid #ddd;
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  }
+  #header h1 { font-size:15px; font-weight:700; color:#1a1a1a; }
+  #header p { font-size:11px; color:#999; margin-top:2px; }
+
+  #map { position:fixed; top:52px; left:0; right:290px; bottom:0; background:#fff; }
+
+  #sidebar {
+    position:fixed; top:52px; right:0; width:290px; bottom:0;
+    background:#fafafa; overflow-y:auto;
+    border-left:1px solid #e0e0e0; padding:12px;
+  }
+  #sidebar h2 {
+    font-size:10px; font-weight:700; color:#aaa;
+    letter-spacing:1.5px; text-transform:uppercase;
+    margin-bottom:10px; padding-bottom:6px;
+    border-bottom:1px solid #eee;
+  }
+
+  /* 도 단위 섹션 */
+  .sido-section { margin-bottom:10px; }
+  .sido-header {
+    font-size:11px; font-weight:700; color:#444;
+    padding:5px 6px; background:#f0f0f0; border-radius:5px;
+    margin-bottom:4px; letter-spacing:-0.2px;
+  }
+  .legend-item {
+    display:flex; align-items:flex-start; gap:8px;
+    padding:6px 8px; border-radius:6px; margin-bottom:3px;
+    background:#fff; border:1px solid #eee;
+  }
+  .legend-color { width:10px; height:10px; border-radius:2px; flex-shrink:0; margin-top:2px; }
+  .legend-label { font-size:11px; color:#333; line-height:1.4; }
+  .legend-label .jur { font-size:10px; color:#999; display:block; margin-top:1px; }
+  .legend-cost { font-size:10px; margin-top:2px; }
+  .cost-in { color:#2E7D32; font-weight:700; }
+  .cost-out { color:#C62828; font-weight:700; }
+  .cost-ratio { color:#E65100; font-size:9px; font-weight:700; margin-left:2px; }
+
+  /* 팝업 */
+  .leaflet-popup-content-wrapper {
+    background:#fff; border:1px solid #ddd; border-radius:10px;
+    box-shadow:0 4px 16px rgba(0,0,0,0.12);
+  }
+  .leaflet-popup-tip { background:#fff; }
+  .leaflet-popup-content { margin:14px 16px; min-width:210px; }
+  .popup-name { font-size:14px; font-weight:700; color:#111; margin-bottom:4px; }
+  .popup-addr { font-size:11px; color:#777; margin-bottom:8px; line-height:1.5; }
+  .popup-cost {
+    background:#f8f8f8; border-radius:8px; padding:10px 12px;
+    margin-bottom:8px; border:1px solid #eee;
+  }
+  .popup-cost-title { font-size:10px; font-weight:700; color:#555; margin-bottom:7px; }
+  .popup-cost-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .popup-cost-label { font-size:11px; color:#888; }
+  .popup-cost-val { font-size:14px; font-weight:700; letter-spacing:-0.03em; }
+  .popup-cost-val.in { color:#2E7D32; }
+  .popup-cost-val.out { color:#C62828; }
+  .popup-cost-divider { height:1px; background:#eee; margin:5px 0; }
+  .popup-cost-ratio { font-size:11px; font-weight:700; color:#E65100; text-align:right; margin-top:2px; }
+  .popup-note { font-size:10px; color:#aaa; margin-top:4px; font-style:italic; }
+  .popup-jur { font-size:10px; color:#555; line-height:1.6; margin-top:4px; }
+
+  /* 툴팁 — 가로 레이아웃 */
+  .leaflet-tooltip {
+    background:rgba(20,20,20,0.92); border:none; color:#fff;
+    font-size:11px; border-radius:6px; padding:6px 11px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.35);
+    font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    pointer-events:none; white-space:nowrap;
+  }
+  .leaflet-tooltip-left::before { border-left-color:rgba(20,20,20,0.92); }
+  .leaflet-tooltip-right::before { border-right-color:rgba(20,20,20,0.92); }
+  .tt-wrap { display:flex; align-items:center; gap:8px; }
+  .tt-name { font-weight:700; font-size:12px; }
+  .tt-sep { color:rgba(255,255,255,0.3); }
+  .tt-label { color:rgba(255,255,255,0.75); font-size:11px; }
+  .tt-none { color:#FF8A80; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>전국 화장장 관할 구역 지도</h1>
+    <p>지역 위 마우스 → 관할 화장장 표시 &nbsp;|&nbsp; 마커 클릭 → 관내·관외 요금 상세 &nbsp;|&nbsp; 자료: 전국 공설 화장시설 공개 사용료</p>
+  </div>
+</div>
+
+<div id="map"></div>
+<div id="sidebar">
+  <h2>시·도별 화장장 목록</h2>
+  <div id="legend-list"></div>
+</div>
+
+<script>
+const GEOJSON_URL = './korea.json';
+let GEOJSON = null;
+const JURISDICTION= {"Incheon|Bupyeong": "incheon", "Incheon|Dong": "incheon", "Incheon|Ganghwa": "incheon", "Incheon|Gyeyang": "incheon", "Incheon|Jung": "incheon", "Incheon|Nam": "incheon", "Incheon|Namdong": "incheon", "Incheon|Ongjin": "incheon", "Incheon|Seo": "incheon", "Incheon|Yeonsu": "incheon", "Seoul|Dobong": "seoul", "Seoul|Dong-daemun": "seoul", "Seoul|Dongjak": "seoul", "Seoul|Eun-pyeong": "seoul", "Seoul|Gandong": "seoul", "Seoul|Gangbuk": "seoul", "Seoul|Gangnam": "seoul", "Seoul|Gangseo": "seoul", "Seoul|Geum-cheon": "seoul", "Seoul|Guro": "seoul", "Seoul|Gwanak": "seoul", "Seoul|Gwang-jin": "seoul", "Seoul|Jongro": "seoul", "Seoul|Jung": "seoul", "Seoul|Jungnang": "seoul", "Seoul|Mapo": "seoul", "Seoul|Nowon": "seoul", "Seoul|Seocho": "seoul", "Seoul|Seodaemun": "seoul", "Seoul|Seongbuk": "seoul", "Seoul|Seongdong": "seoul", "Seoul|Songpa": "seoul", "Seoul|Yangcheon": "seoul", "Seoul|Yeongdeungpo": "seoul", "Seoul|Yongsan": "seoul", "Gyeonggi-do|Paju": "seoul", "Gyeonggi-do|Goyang": "seoul", "Gyeonggi-do|Seongnam": "seongnam", "Gyeonggi-do|Bucheon": "hwaseong", "Gyeonggi-do|Gwangmyeong": "hwaseong", "Gyeonggi-do|Anyang": "hwaseong", "Gyeonggi-do|Siheung": "hwaseong", "Gyeonggi-do|Ansan": "hwaseong", "Gyeonggi-do|Hwaseong": "hwaseong", "Gyeonggi-do|Suwon": "suwon", "Gyeonggi-do|Yongin": "yongin", "Gangwon-do|Wonju": "wonju", "Gyeonggi-do|Yangpyeong": "wonju", "Gangwon-do|Hoengseong": "wonju", "Gangwon-do|Chuncheon": "chuncheon", "Gangwon-do|Hongcheon": "chuncheon", "Gangwon-do|Inje": "inje", "Gangwon-do|Sokcho": "sokcho", "Gangwon-do|Gangneung": "gangneung", "Gangwon-do|Jeongseon": "jeongseon", "Gangwon-do|Donghae": "donghae", "Gangwon-do|Taebaek": "taebaek", "Gyeongsangbuk-do|Uljin": "uljin", "Gyeongsangbuk-do|Bonghwa": "uljin", "Gangwon-do|Samcheok": "uljin", "Gyeongsangbuk-do|Yeongyang": "uljin", "Gyeongsangbuk-do|Yeongdeok": "uljin", "Gyeongsangbuk-do|Andong": "andong", "Gyeongsangbuk-do|Yeongju": "andong", "Gyeongsangbuk-do|Mungyeong": "mungyeong", "Gyeongsangbuk-do|Uiseong": "uiseong", "Gyeongsangbuk-do|Sangju": "sangju", "Gyeongsangbuk-do|Gumi": "gumi", "Gyeongsangbuk-do|Gimcheon": "gimcheon", "Daegu|Buk": "daegu", "Daegu|Dalseo": "daegu", "Daegu|Dalseong": "daegu", "Daegu|Dong": "daegu", "Daegu|Jung": "daegu", "Daegu|Nam": "daegu", "Daegu|Seo": "daegu", "Daegu|Suseong": "daegu", "Gyeongsangbuk-do|Pohang": "pohang", "Gyeongsangbuk-do|Gyeongju": "gyeongju", "Gyeongsangnam-do|Miryang": "miryang", "Ulsan|Buk": "ulsan", "Ulsan|Dong": "ulsan", "Ulsan|Jung": "ulsan", "Ulsan|Nam": "ulsan", "Ulsan|Ulju": "ulsan", "Busan|Buk": "busan", "Busan|Busanjin": "busan", "Busan|Dong": "busan", "Busan|Dongnae": "busan", "Busan|Gangseo": "busan", "Busan|Geumjeong": "busan", "Busan|Gijang": "busan", "Busan|Haeundae": "busan", "Busan|Nam": "busan", "Busan|Saha": "busan", "Busan|Sasang": "busan", "Busan|Seo": "busan", "Busan|Suyeong": "busan", "Busan|Yeongdo": "busan", "Busan|Yeonje": "busan", "Gyeongsangnam-do|Gimhae": "gimhae", "Gyeongsangnam-do|Changwon": "changwon", "Gyeongsangnam-do|Masan": "changwon", "Gyeongsangnam-do|Jinhae": "changwon", "Gyeongsangnam-do|Haman": "haman", "Gyeongsangnam-do|Jinju": "jinju", "Gyeongsangnam-do|Sacheon": "sacheon", "Gyeongsangnam-do|Goseong": "goseong_nam", "Gyeongsangnam-do|Tongyeong": "tongyeong", "Gyeongsangnam-do|Geoje": "tongyeong", "Gyeongsangnam-do|Namhae": "namhae", "Gwangju|Buk": "gwangju", "Gwangju|Dong": "gwangju", "Gwangju|Gwangsan": "gwangju", "Gwangju|Nam": "gwangju", "Gwangju|Seo": "gwangju", "Jeollanam-do|Gokseong": "gokseong", "Jeollanam-do|Suncheon": "suncheon", "Jeollanam-do|Gwangyang": "gwangyang", "Jeollanam-do|Yeosu": "yeosu", "Jeollanam-do|Goheung": "goheung", "Jeollanam-do|Haenam": "namdо", "Jeollanam-do|Jindo": "namdо", "Jeollanam-do|Wando": "namdо", "Jeollanam-do|Mokpo": "mokpo", "Jeju|Jeju": "jeju", "Jeju|Seogwipo": "jeju", "Jeollabuk-do|Gochang": "seonamgwon", "Jeollabuk-do|Jeongeup": "seonamgwon", "Jeollabuk-do|Buan": "seonamgwon", "Jeollabuk-do|Gimje": "seonamgwon", "Jeollabuk-do|Jeonju": "jeonju", "Jeollabuk-do|Wanju": "jeonju", "Jeollabuk-do|Iksan": "iksan", "Jeollabuk-do|Gunsan": "gunsan", "Chungcheongnam-do|Seocheon": "gunsan", "Jeollabuk-do|Namwon": "namwon", "Chungcheongnam-do|Taean": "hongseong", "Chungcheongnam-do|Seosan": "hongseong", "Chungcheongnam-do|Dangjin": "hongseong", "Chungcheongnam-do|Yesan": "hongseong", "Chungcheongnam-do|Asan": "hongseong", "Chungcheongnam-do|Hongseong": "hongseong", "Chungcheongnam-do|Boryeong": "hongseong", "Chungcheongnam-do|Nonsan": "hongseong", "Chungcheongnam-do|Geumsan": "hongseong", "Chungcheongnam-do|Gongju": "gongju", "Chungcheongnam-do|Cheongyang": "gongju", "Chungcheongnam-do|Buyeo": "gongju", "Chungcheongnam-do|Yeongi": "sejong", "Daejeon|Daedeok": "daejeon", "Daejeon|Dong": "daejeon", "Daejeon|Jung": "daejeon", "Daejeon|Seo": "daejeon", "Daejeon|Yuseong": "daejeon", "Chungcheongnam-do|Cheonan": "cheonan", "Chungcheongbuk-do|Cheongju": "cheongju", "Chungcheongbuk-do|Cheongwon": "cheongju", "Chungcheongbuk-do|Chungju": "chungju", "Chungcheongbuk-do|Jecheon": "jecheon"};
+const COLORS      = {"incheon": "#4A90D9", "seoul": "#8B6347", "seongnam": "#E05252", "hwaseong": "#3DAD6E", "suwon": "#9B59B6", "yongin": "#E8943A", "wonju": "#16A085", "chuncheon": "#F39C12", "inje": "#2980B9", "sokcho": "#8E44AD", "gangneung": "#27AE60", "jeongseon": "#C0392B", "donghae": "#1ABC9C", "taebaek": "#D35400", "uljin": "#7F8C8D", "andong": "#6C3483", "mungyeong": "#117A65", "uiseong": "#B7950B", "sangju": "#1A5276", "gumi": "#78281F", "gimcheon": "#0E6655", "daegu": "#E91E8C", "pohang": "#5D6D7E", "gyeongju": "#A04000", "miryang": "#6E2F8A", "ulsan": "#1565C0", "busan": "#C62828", "gimhae": "#2E7D32", "changwon": "#F57F17", "haman": "#4A148C", "jinju": "#00695C", "sacheon": "#827717", "goseong_nam": "#37474F", "tongyeong": "#AD1457", "namhae": "#558B2F", "gwangju": "#E53935", "gokseong": "#00838F", "suncheon": "#F4511E", "gwangyang": "#43A047", "yeosu": "#1E88E5", "goheung": "#8D6E63", "namdо": "#26A69A", "mokpo": "#AB47BC", "jeju": "#EC407A", "seonamgwon": "#7B1FA2", "jeonju": "#0288D1", "iksan": "#00897B", "gunsan": "#F9A825", "namwon": "#6D4C41", "hongseong": "#546E7A", "gongju": "#BF360C", "sejong": "#00796B", "daejeon": "#5C6BC0", "cheonan": "#8BC34A", "cheongju": "#FF7043", "chungju": "#795548", "jecheon": "#607D8B", "none": "#FFFFFF"};
+const LABELS      = {"incheon": "인천가족공원", "seoul": "서울시립승화원·서울추모공원", "seongnam": "성남시장례문화사업소", "hwaseong": "화성 함백산추모공원", "suwon": "수원시연화장", "yongin": "용인 평온의숲", "wonju": "원주추모공원화장장", "chuncheon": "춘천안식원", "inje": "인제 하늘내린도리안", "sokcho": "속초시승화원", "gangneung": "솔향하늘길", "jeongseon": "정선하늘터", "donghae": "동해삼척 공동화장장", "taebaek": "태백시화장장", "uljin": "울진군립추모원", "andong": "안동장사문화공원", "mungyeong": "문경예송원", "uiseong": "의성군공설화장장", "sangju": "상주시승천원", "gumi": "구미시추모공원", "gimcheon": "김천시공설화장장", "daegu": "대구명복공원", "pohang": "포항시 화장장", "gyeongju": "경주하늘마루", "miryang": "밀양시공설화장시설", "ulsan": "울산하늘공원", "busan": "부산영락공원", "gimhae": "김해추모의공원", "changwon": "창원시립화장장", "haman": "함안하늘공원", "jinju": "진주시안락공원", "sacheon": "사천시 누리원", "goseong_nam": "고성군공설화장장", "tongyeong": "통영시추모공원", "namhae": "남해추모누리 영화원", "gwangju": "광주 영락공원", "gokseong": "청계원", "suncheon": "순천시립추모공원", "gwangyang": "광양시화장장", "yeosu": "여수시 영락공원", "goheung": "국립소록도병원화장장", "namdо": "남도광역추모공원", "mokpo": "목포추모공원", "jeju": "제주 양지공원", "seonamgwon": "서남권추모공원", "jeonju": "전주시승화원", "iksan": "익산시공설화장장", "gunsan": "군산시승화원", "namwon": "남원시승화원", "hongseong": "홍성추모공원", "gongju": "공주나래원", "sejong": "세종시 은하수공원", "daejeon": "대전시정수원", "cheonan": "천안추모공원", "cheongju": "청주시목련공원", "chungju": "충주시 하늘나라", "jecheon": "제천시 영원한쉼터", "none": "관내 화장장 없음"};
+const KR_MAP      = {"Dobong": "도봉구", "Dong-daemun": "동대문구", "Dongjak": "동작구", "Eun-pyeong": "은평구", "Gandong": "강동구", "Gangbuk": "강북구", "Gangnam": "강남구", "Gangseo": "강서구", "Geum-cheon": "금천구", "Guro": "구로구", "Gwanak": "관악구", "Gwang-jin": "광진구", "Jongro": "종로구", "Jungnang": "중랑구", "Mapo": "마포구", "Nowon": "노원구", "Seocho": "서초구", "Seodaemun": "서대문구", "Seongbuk": "성북구", "Seongdong": "성동구", "Songpa": "송파구", "Yangcheon": "양천구", "Yeongdeungpo": "영등포구", "Yongsan": "용산구", "Bupyeong": "부평구", "Ganghwa": "강화군", "Gyeyang": "계양구", "Namdong": "남동구", "Ongjin": "옹진군", "Yeonsu": "연수구", "Ansan": "안산시", "Ansoeng": "안성시", "Anyang": "안양시", "Bucheon": "부천시", "Dongducheon": "동두천시", "Gapyeong": "가평군", "Gimpo": "김포시", "Goyang": "고양시", "Gunpo": "군포시", "Guri": "구리시", "Gwacheon": "과천시", "Gwangmyeong": "광명시", "Hanam": "하남시", "Hwaseong": "화성시", "Icheon": "이천시", "Namyangju": "남양주시", "Osan": "오산시", "Paju": "파주시", "Pocheon": "포천시", "Pyeongtaek": "평택시", "Seongnam": "성남시", "Siheung": "시흥시", "Suwon": "수원시", "Uijeongbu": "의정부시", "Uiwang": "의왕시", "Yangju": "양주시", "Yangpyeong": "양평군", "Yeoju": "여주시", "Yeoncheon": "연천군", "Yongin": "용인시", "Cheorwon": "철원군", "Chuncheon": "춘천시", "Donghae": "동해시", "Gangneung": "강릉시", "Goseong": "고성군", "Hoengseong": "횡성군", "Hongcheon": "홍천군", "Hwacheon": "화천군", "Inje": "인제군", "Jeongseon": "정선군", "Pyeongchang": "평창군", "Samcheok": "삼척시", "Sokcho": "속초시", "Taebaek": "태백시", "Wonju": "원주시", "Yanggu": "양구군", "Yangyang": "양양군", "Yeongwol": "영월군", "Boeun": "보은군", "Cheongju": "청주시", "Cheongwon": "청원군", "Chungju": "충주시", "Danyang": "단양군", "Eumseong": "음성군", "Goesan": "괴산군", "Jecheon": "제천시", "Jeungpyeong": "증평군", "Jincheon": "진천군", "Okcheon": "옥천군", "Yeongdong": "영동군", "Asan": "아산시", "Boryeong": "보령시", "Buyeo": "부여군", "Cheonan": "천안시", "Cheongyang": "청양군", "Dangjin": "당진시", "Geumsan": "금산군", "Gongju": "공주시", "Gyeryong": "계룡시", "Hongseong": "홍성군", "Nonsan": "논산시", "Seocheon": "서천군", "Seosan": "서산시", "Taean": "태안군", "Yeongi": "세종시(연기)", "Yesan": "예산군", "Buan": "부안군", "Gimje": "김제시", "Gochang": "고창군", "Gunsan": "군산시", "Iksan": "익산시", "Imsil": "임실군", "Jangsu": "장수군", "Jeongeup": "정읍시", "Jeonju": "전주시", "Jinan": "진안군", "Muju": "무주군", "Namwon": "남원시", "Sunchang": "순창군", "Wanju": "완주군", "Boseong": "보성군", "Damyang": "담양군", "Gangjin": "강진군", "Goheung": "고흥군", "Gokseong": "곡성군", "Gurye": "구례군", "Gwangyang": "광양시", "Haenam": "해남군", "Hampyeong": "함평군", "Hwasun": "화순군", "Jangheung": "장흥군", "Jangseong": "장성군", "Jindo": "진도군", "Mokpo": "목포시", "Muan": "무안군", "Naju": "나주시", "Sinan": "신안군", "Suncheon": "순천시", "Wando": "완도군", "Yeongam": "영암군", "Yeonggwang": "영광군", "Yeosu": "여수시", "Andong": "안동시", "Bonghwa": "봉화군", "Cheongdo": "청도군", "Cheongsong": "청송군", "Chilgok": "칠곡군", "Gimcheon": "김천시", "Goryeong": "고령군", "Gumi": "구미시", "Gunwi": "군위군", "Gyeongju": "경주시", "Gyeongsan": "경산시", "Mungyeong": "문경시", "Pohang": "포항시", "Sangju": "상주시", "Seongju": "성주군", "Uiseong": "의성군", "Uljin": "울진군", "Ulleung": "울릉군", "Yecheon": "예천군", "Yeongcheon": "영천시", "Yeongdeok": "영덕군", "Yeongju": "영주시", "Yeongyang": "영양군", "Changnyeong": "창녕군", "Changwon": "창원시", "Geochang": "거창군", "Geoje": "거제시", "Gimhae": "김해시", "Hadong": "하동군", "Haman": "함안군", "Hamyang": "함양군", "Hapcheon": "합천군", "Jinhae": "진해구", "Jinju": "진주시", "Masan": "마산구", "Miryang": "밀양시", "Namhae": "남해군", "Sacheon": "사천시", "Sancheong": "산청군", "Tongyeong": "통영시", "Uiryeong": "의령군", "Yangsan": "양산시", "Geumjeong": "금정구", "Gijang": "기장군", "Haeundae": "해운대구", "Suyeong": "수영구", "Yeongdo": "영도구", "Yeonje": "연제구", "Busanjin": "부산진구", "Dongnae": "동래구", "Sasang": "사상구", "Saha": "사하구", "Dalseong": "달성군", "Dalseo": "달서구", "Suseong": "수성구", "Daedeok": "대덕구", "Yuseong": "유성구", "Ulju": "울주군", "Gwangsan": "광산구", "Jeju": "제주시", "Seogwipo": "서귀포시", "Buk": "북구", "Dong": "동구", "Jung": "중구", "Nam": "남구", "Seo": "서구"};
+const CREMATORIA  = [{"name": "인천가족공원 승화원", "lat": 37.5042, "lng": 126.7214, "addr": "인천 부평구 평온로 61", "color": "#4A90D9", "jur": "인천광역시 전역", "sido": "인천", "cost_in": 160000, "cost_out": 1000000, "note": null}, {"name": "서울시립승화원", "lat": 37.6763, "lng": 126.8681, "addr": "고양시 덕양구 통일로 504", "color": "#8B6347", "jur": "서울·파주시·고양시", "sido": "서울", "cost_in": 120000, "cost_out": 1000000, "note": null}, {"name": "서울추모공원", "lat": 37.4458, "lng": 127.0457, "addr": "서울 서초구 양재대로12길 74", "color": "#8B6347", "jur": "서울·파주시·고양시", "sido": "서울", "cost_in": 120000, "cost_out": 1000000, "note": null}, {"name": "성남시장례문화사업소", "lat": 37.4386, "lng": 127.1454, "addr": "성남시 중원구 순암로 787", "color": "#E05252", "jur": "성남시", "sido": "경기", "cost_in": 50000, "cost_out": 1000000, "note": null}, {"name": "화성 함백산추모공원", "lat": 37.2274, "lng": 126.7954, "addr": "화성시 매송면 서해로 2448-32", "color": "#3DAD6E", "jur": "부천·광명·안양·시흥·안산·화성", "sido": "경기", "cost_in": 160000, "cost_out": 1000000, "note": null}, {"name": "수원시연화장 승화원", "lat": 37.2834, "lng": 127.0552, "addr": "수원시 영통구 광교호수로 278", "color": "#9B59B6", "jur": "수원시", "sido": "경기", "cost_in": 150000, "cost_out": 1000000, "note": null}, {"name": "용인 평온의숲", "lat": 37.1712, "lng": 127.2463, "addr": "용인시 처인구 이동읍 평온의숲로 77", "color": "#E8943A", "jur": "용인시", "sido": "경기", "cost_in": 100000, "cost_out": 900000, "note": null}, {"name": "원주추모공원 화장장", "lat": 37.3065, "lng": 127.9212, "addr": "원주시 흥업면 복술길 33", "color": "#16A085", "jur": "원주시·양평군·횡성군", "sido": "강원", "cost_in": 100000, "cost_out": 700000, "note": null}, {"name": "춘천안식원", "lat": 37.9003, "lng": 127.7353, "addr": "춘천시 동산면 종자리로 331-21", "color": "#F39C12", "jur": "춘천시·홍천군", "sido": "강원", "cost_in": 70000, "cost_out": 700000, "note": null}, {"name": "인제 하늘내린도리안", "lat": 38.0614, "lng": 128.1708, "addr": "인제군 남면 자작나무숲길 444-62", "color": "#2980B9", "jur": "인제군", "sido": "강원", "cost_in": 70000, "cost_out": 700000, "note": null}, {"name": "속초시승화원", "lat": 38.2075, "lng": 128.5913, "addr": "속초시 이목로 194", "color": "#8E44AD", "jur": "속초시", "sido": "강원", "cost_in": 100000, "cost_out": 700000, "note": null}, {"name": "솔향하늘길 (강릉)", "lat": 37.8375, "lng": 128.8743, "addr": "강릉시 사천면 청솔공원길 292-55", "color": "#27AE60", "jur": "강릉시", "sido": "강원", "cost_in": 150000, "cost_out": 700000, "note": null}, {"name": "정선하늘터", "lat": 37.3814, "lng": 128.6604, "addr": "정선군 사북읍 소금강로 3500-34", "color": "#C0392B", "jur": "정선군", "sido": "강원", "cost_in": 100000, "cost_out": 700000, "note": null}, {"name": "동해삼척 공동화장장", "lat": 37.5244, "lng": 129.1142, "addr": "동해시 강원남부로 4589", "color": "#1ABC9C", "jur": "동해시·삼척시", "sido": "강원", "cost_in": 100000, "cost_out": 600000, "note": null}, {"name": "태백시화장장", "lat": 37.1647, "lng": 128.9882, "addr": "태백시 백두대간로 844", "color": "#D35400", "jur": "태백시", "sido": "강원", "cost_in": 100000, "cost_out": 700000, "note": null}, {"name": "울진군립추모원", "lat": 36.9924, "lng": 129.4009, "addr": "울진군 울진읍 대흥신림로 1046-280", "color": "#7F8C8D", "jur": "울진·봉화·삼척·영양·영덕", "sido": "경북", "cost_in": 100000, "cost_out": 400000, "note": null}, {"name": "안동장사문화공원", "lat": 36.5684, "lng": 128.7295, "addr": "안동시 풍천면 운골길 205", "color": "#6C3483", "jur": "안동시·영주시", "sido": "경북", "cost_in": 150000, "cost_out": 900000, "note": null}, {"name": "문경예송원", "lat": 36.5938, "lng": 128.1863, "addr": "문경시 유곡불정로 239-39", "color": "#117A65", "jur": "문경시", "sido": "경북", "cost_in": 50000, "cost_out": 600000, "note": null}, {"name": "의성군공설화장장", "lat": 36.3527, "lng": 128.6978, "addr": "의성군 의성읍 의성길안로 287-29", "color": "#B7950B", "jur": "의성군", "sido": "경북", "cost_in": 100000, "cost_out": 600000, "note": null}, {"name": "상주시승천원", "lat": 36.4157, "lng": 128.1589, "addr": "상주시 병성천2길 560", "color": "#1A5276", "jur": "상주시", "sido": "경북", "cost_in": 100000, "cost_out": 500000, "note": null}, {"name": "구미시추모공원", "lat": 36.1192, "lng": 128.3435, "addr": "구미시 옥성면 추모공원로 81", "color": "#78281F", "jur": "구미시", "sido": "경북", "cost_in": 100000, "cost_out": 600000, "note": null}, {"name": "김천시공설화장장", "lat": 36.1198, "lng": 128.1137, "addr": "김천시 봉산면 영남대로 431", "color": "#0E6655", "jur": "김천시", "sido": "경북", "cost_in": 150000, "cost_out": 800000, "note": null}, {"name": "대구명복공원", "lat": 35.8989, "lng": 128.6472, "addr": "대구 수성구 달구벌대로541길 47", "color": "#E91E8C", "jur": "대구광역시", "sido": "대구", "cost_in": 180000, "cost_out": 1000000, "note": null}, {"name": "포항시립우현화장장", "lat": 36.0436, "lng": 129.3435, "addr": "포항시 북구 소티재로 69-12", "color": "#5D6D7E", "jur": "포항시", "sido": "경북", "cost_in": 50000, "cost_out": 400000, "note": null}, {"name": "경주하늘마루", "lat": 35.7381, "lng": 129.1047, "addr": "경주시 서면 하늘마루길 330", "color": "#A04000", "jur": "경주시", "sido": "경북", "cost_in": 150000, "cost_out": 1000000, "note": null}, {"name": "밀양시공설화장시설", "lat": 35.5037, "lng": 128.7465, "addr": "밀양시 북성로7길 59", "color": "#6E2F8A", "jur": "밀양시", "sido": "경남", "cost_in": 80000, "cost_out": 520000, "note": null}, {"name": "울산하늘공원", "lat": 35.4824, "lng": 129.0849, "addr": "울주군 삼동면 보삼길 550", "color": "#1565C0", "jur": "울산광역시·울주군", "sido": "울산", "cost_in": 140000, "cost_out": 800000, "note": null}, {"name": "부산영락공원", "lat": 35.2681, "lng": 129.0713, "addr": "부산 금정구 금정도서관로 108", "color": "#C62828", "jur": "부산광역시", "sido": "부산", "cost_in": 120000, "cost_out": 480000, "note": null}, {"name": "김해추모의공원", "lat": 35.2284, "lng": 128.8893, "addr": "김해시 주촌면 서부로1637번길 574", "color": "#2E7D32", "jur": "김해시", "sido": "경남", "cost_in": 100000, "cost_out": 500000, "note": null}, {"name": "창원시립상복공원", "lat": 35.2279, "lng": 128.6827, "addr": "창원시 성산구 공단로474번길 160", "color": "#F57F17", "jur": "창원시", "sido": "경남", "cost_in": 70000, "cost_out": 500000, "note": null}, {"name": "함안하늘공원", "lat": 35.2728, "lng": 128.4065, "addr": "함안군 가야읍 함마대로 1145", "color": "#4A148C", "jur": "함안군", "sido": "경남", "cost_in": 80000, "cost_out": 500000, "note": null}, {"name": "진주시안락공원", "lat": 35.1798, "lng": 128.1077, "addr": "진주시 진산로 141-42", "color": "#00695C", "jur": "진주시", "sido": "경남", "cost_in": 70000, "cost_out": 352000, "note": null}, {"name": "사천시 누리원", "lat": 34.9382, "lng": 128.0643, "addr": "사천시 해안관광로 208-66", "color": "#827717", "jur": "사천시", "sido": "경남", "cost_in": 70000, "cost_out": 500000, "note": null}, {"name": "고성군공설화장장", "lat": 34.9731, "lng": 128.3224, "addr": "고성군 상리면 자은리 산85-1", "color": "#37474F", "jur": "고성군", "sido": "경남", "cost_in": 50000, "cost_out": 400000, "note": null}, {"name": "통영시추모공원", "lat": 34.8464, "lng": 128.4234, "addr": "통영시 장대길 115", "color": "#AD1457", "jur": "통영시·거제시", "sido": "경남", "cost_in": 100000, "cost_out": 800000, "note": null}, {"name": "남해추모누리 영화원", "lat": 34.8378, "lng": 127.8922, "addr": "남해군 서면 연죽로 46-77", "color": "#558B2F", "jur": "남해군", "sido": "경남", "cost_in": 60000, "cost_out": 500000, "note": null}, {"name": "광주 영락공원", "lat": 35.184, "lng": 126.8887, "addr": "광주 북구 영락공원로 170", "color": "#E53935", "jur": "광주광역시", "sido": "광주", "cost_in": 90000, "cost_out": 900000, "note": null}, {"name": "순천시립추모공원", "lat": 34.9564, "lng": 127.4872, "addr": "순천시 양율길 132", "color": "#F4511E", "jur": "순천시", "sido": "전남", "cost_in": 58000, "cost_out": 405000, "note": null}, {"name": "광양시화장장", "lat": 34.9413, "lng": 127.6958, "addr": "광양시 광양읍 직동1길 300", "color": "#43A047", "jur": "광양시", "sido": "전남", "cost_in": 100000, "cost_out": 530000, "note": null}, {"name": "여수시 영락공원 승화원", "lat": 34.7604, "lng": 127.6622, "addr": "여수시 소라면 의곡길 494", "color": "#1E88E5", "jur": "여수시", "sido": "전남", "cost_in": 60000, "cost_out": 400000, "note": null}, {"name": "국립소록도병원화장장", "lat": 34.4937, "lng": 127.1548, "addr": "고흥군 도양읍 소록리 1번지", "color": "#8D6E63", "jur": "고흥군", "sido": "전남", "cost_in": null, "cost_out": null, "note": "미운영"}, {"name": "남도광역추모공원", "lat": 34.5738, "lng": 126.5994, "addr": "해남군 황산면 호교길 241-250", "color": "#26A69A", "jur": "해남·진도·완도군", "sido": "전남", "cost_in": 70000, "cost_out": 500000, "note": null}, {"name": "목포추모공원", "lat": 34.8118, "lng": 126.3921, "addr": "목포시 고하대로 1140-41", "color": "#AB47BC", "jur": "목포시", "sido": "전남", "cost_in": 90000, "cost_out": 550000, "note": null}, {"name": "제주 양지공원", "lat": 33.4996, "lng": 126.5312, "addr": "제주시 516로 2810-31", "color": "#EC407A", "jur": "제주도 전역", "sido": "제주", "cost_in": 50000, "cost_out": 120000, "note": null}, {"name": "서남권추모공원", "lat": 35.5624, "lng": 126.8383, "addr": "정읍시 감곡면 정읍북로 1850", "color": "#7B1FA2", "jur": "고창·정읍·부안·김제", "sido": "전북", "cost_in": 70000, "cost_out": 500000, "note": null}, {"name": "전주시승화원", "lat": 35.7972, "lng": 127.0824, "addr": "전주시 완산구 콩쥐팥쥐로 1705-138", "color": "#0288D1", "jur": "전주시·완주군", "sido": "전북", "cost_in": 140000, "cost_out": 600000, "note": null}, {"name": "익산시공설화장장", "lat": 35.9436, "lng": 126.9549, "addr": "전북 익산시 석왕동 235-13", "color": "#00897B", "jur": "익산시", "sido": "전북", "cost_in": 60000, "cost_out": 500000, "note": null}, {"name": "군산시승화원", "lat": 35.9676, "lng": 126.7369, "addr": "군산시 임피면 서원석곡로 436-34", "color": "#F9A825", "jur": "군산시·서천군", "sido": "전북", "cost_in": 60000, "cost_out": 500000, "note": null}, {"name": "남원시승화원", "lat": 35.4162, "lng": 127.3892, "addr": "전북 남원시 광치동 690-1", "color": "#6D4C41", "jur": "남원시", "sido": "전북", "cost_in": 60000, "cost_out": 600000, "note": null}, {"name": "홍성추모공원", "lat": 36.6013, "lng": 126.6601, "addr": "홍성군 금마면 금마로516번길 85", "color": "#546E7A", "jur": "태안·서산·당진·예산·아산·홍성·보령·논산·금산", "sido": "충남", "cost_in": 500000, "cost_out": 1000000, "note": null}, {"name": "공주나래원", "lat": 36.4477, "lng": 127.0651, "addr": "공주시 이인면 삼배실길 70", "color": "#BF360C", "jur": "공주·청양·부여", "sido": "충남", "cost_in": 100000, "cost_out": 1000000, "note": null}, {"name": "세종시 은하수공원", "lat": 36.504, "lng": 127.259, "addr": "세종시 정안세종로 1527", "color": "#00796B", "jur": "세종시", "sido": "세종", "cost_in": 160000, "cost_out": 1000000, "note": null}, {"name": "대전시정수원", "lat": 36.3219, "lng": 127.3749, "addr": "대전 서구 계백로1249번길 174-82", "color": "#5C6BC0", "jur": "대전광역시", "sido": "대전", "cost_in": 90000, "cost_out": 570000, "note": null}, {"name": "천안추모공원", "lat": 36.6924, "lng": 127.2285, "addr": "천안시 동남구 광덕면 밤나무골길 38", "color": "#8BC34A", "jur": "천안시", "sido": "충남", "cost_in": 100000, "cost_out": 800000, "note": null}, {"name": "청주시목련공원", "lat": 36.6423, "lng": 127.5298, "addr": "청주시 상당구 목련로 731", "color": "#FF7043", "jur": "청주시", "sido": "충북", "cost_in": 100000, "cost_out": 500000, "note": null}, {"name": "충주시 하늘나라", "lat": 37.0005, "lng": 127.9289, "addr": "충주시 목벌길 256", "color": "#795548", "jur": "충주시", "sido": "충북", "cost_in": 100000, "cost_out": 1000000, "note": null}, {"name": "제천시 영원한쉼터", "lat": 37.1317, "lng": 128.1916, "addr": "제천시 송학면 송학주천로9길 122", "color": "#607D8B", "jur": "제천시", "sido": "충북", "cost_in": 50000, "cost_out": 1000000, "note": null}, {"name": "울릉하늘섬공원", "lat": 37.4847, "lng": 130.9057, "addr": "울릉군 서면 태하령길 314", "color": "#D35400", "jur": "울릉도·독도", "sido": "경북", "cost_in": 30000, "cost_out": 60000, "note": null}, {"name": "영주시화장장", "lat": 36.8068, "lng": 128.6239, "addr": "영주시 조와로 48-186", "color": "#5D4037", "jur": "영주시 북부", "sido": "경북", "cost_in": 50000, "cost_out": 400000, "note": null}];
+const SIDO_ORDER  = ["서울", "인천", "경기", "강원", "충북", "충남", "세종", "대전", "전북", "전남", "광주", "경북", "경남", "대구", "울산", "부산", "제주"];
+const SIDO_KR     = {"서울": "서울특별시", "인천": "인천광역시", "경기": "경기도", "강원": "강원도", "충북": "충청북도", "충남": "충청남도", "세종": "세종특별자치시", "대전": "대전광역시", "전북": "전라북도", "전남": "전라남도", "광주": "광주광역시", "경북": "경상북도", "경남": "경상남도", "대구": "대구광역시", "울산": "울산광역시", "부산": "부산광역시", "제주": "제주특별자치도"};
+
+function fmtWon(n) {
+  if (n === null || n === undefined) return '정보없음';
+  return (n >= 10000) ? (n/10000).toFixed(0)+'만원' : n.toLocaleString()+'원';
+}
+function ratio(a,b) {
+  if (!a||!b) return null;
+  return (b/a).toFixed(1);
+}
+
+// ── 지도 ──
+const map = L.map('map', { center:[36.5,127.8], zoom:7, zoomControl:true, attributionControl:false });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', { maxZoom:18 }).addTo(map);
+
+// ── GeoJSON fetch 후 렌더링 ──
+fetch(GEOJSON_URL)
+  .then(r => r.json())
+  .then(data => {
+    GEOJSON = data;
+    L.geoJSON(GEOJSON, {
+  style: feat => {
+    const key2 = feat.properties.NAME_1+'|'+feat.properties.NAME_2;
+    const ckey = JURISDICTION[key2]||'none';
+    return { fillColor:COLORS[ckey]||'#fff', fillOpacity:ckey==='none'?0.06:0.50, color:'#bbb', weight:0.7 };
+  },
+  onEachFeature: (feat, layer) => {
+    const key2  = feat.properties.NAME_1+'|'+feat.properties.NAME_2;
+    const ckey  = JURISDICTION[key2]||'none';
+    const krName= KR_MAP[feat.properties.NAME_2]||feat.properties.NAME_2;
+    const label = LABELS[ckey]||'관내 화장장 없음';
+
+    // 툴팁: 가로 레이아웃, 비용 없음
+    const tipContent = ckey === 'none'
+      ? `<div class="tt-wrap"><span class="tt-name">${krName}</span><span class="tt-sep">|</span><span class="tt-none">관내 화장장 없음</span></div>`
+      : `<div class="tt-wrap"><span class="tt-name">${krName}</span><span class="tt-sep">|</span><span class="tt-label">${label}</span></div>`;
+
+    layer.bindTooltip(tipContent, { sticky:true, offset:[10,0] });
+    layer.on('mouseover', function() { this.setStyle({ fillOpacity:ckey==='none'?0.12:0.72, weight:1.5, color:'#888' }); });
+    layer.on('mouseout',  function() { this.setStyle({ fillOpacity:ckey==='none'?0.06:0.50, weight:0.7,  color:'#bbb' }); });
+  }
+}).addTo(map);
+
+
+
+// ── 마커 ──
+CREMATORIA.forEach(c => {
+  const icon = L.divIcon({
+    className:'',
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:${c.color};border:2.5px solid #fff;box-shadow:0 0 0 2px ${c.color}66,0 2px 6px rgba(0,0,0,0.3);"></div>`,
+    iconSize:[14,14], iconAnchor:[7,7],
+  });
+  const r = ratio(c.cost_in, c.cost_out);
+  const noteHtml = c.note ? `<div class="popup-note">※ ${c.note}</div>` : '';
+  const costBlock = (c.cost_in !== null && c.cost_in !== undefined)
+    ? `<div class="popup-cost">
+        <div class="popup-cost-title">💰 일반 성인 화장 요금</div>
+        <div class="popup-cost-row">
+          <span class="popup-cost-label">관내 주민</span>
+          <span class="popup-cost-val in">${fmtWon(c.cost_in)}</span>
+        </div>
+        <div class="popup-cost-row">
+          <span class="popup-cost-label">관외 주민</span>
+          <span class="popup-cost-val out">${fmtWon(c.cost_out)}</span>
+        </div>
+        ${r?`<div class="popup-cost-divider"></div><div class="popup-cost-ratio">관외가 관내보다 ${r}배 비쌉니다</div>`:''}
+        ${noteHtml}
+      </div>`
+    : `<div class="popup-cost"><div class="popup-cost-title" style="color:#aaa;">💰 ${c.note||'요금 정보 없음'}</div></div>`;
+
+  L.marker([c.lat,c.lng],{icon}).addTo(map)
+    .bindPopup(`
+      <div class="popup-name">${c.name}</div>
+      <div class="popup-addr">📍 ${c.addr}</div>
+      ${costBlock}
+      <div class="popup-jur">관할: ${c.jur}</div>
+    `,{maxWidth:260})
+    .bindTooltip(c.name, {direction:'top', offset:[0,-10]});
+});
+
+// ── 범례: 도 단위 그룹 ──
+const legendList = document.getElementById('legend-list');
+const grouped = {};
+CREMATORIA.forEach(c => {
+  const s = c.sido;
+  if (!grouped[s]) grouped[s] = [];
+  // 같은 이름 중복 제거
+  if (!grouped[s].find(x => x.name === c.name)) grouped[s].push(c);
+});
+
+SIDO_ORDER.forEach(sido => {
+  if (!grouped[sido]) return;
+  const krSido = SIDO_KR[sido] || sido;
+  const cnt = grouped[sido].length;
+  let html = `<div class="sido-section"><div class="sido-header">${krSido} <span style="font-weight:400;color:#888;font-size:10px;">(${cnt}곳)</span></div>`;
+  grouped[sido].forEach(c => {
+    const r = ratio(c.cost_in, c.cost_out);
+    html += `
+      <div class="legend-item">
+        <div class="legend-color" style="background:${c.color}"></div>
+        <div class="legend-label">
+          ${c.name}
+          <span class="jur">${c.jur}</span>
+          <div class="legend-cost">
+            <span class="cost-in">${fmtWon(c.cost_in)}</span> →
+            <span class="cost-out">${fmtWon(c.cost_out)}</span>
+            ${r?`<span class="cost-ratio">${r}배</span>`:''}
+          </div>
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
+  legendList.innerHTML += html;
+});
+
+legendList.innerHTML += `
+  <div style="height:1px;background:#eee;margin:8px 0;"></div>
+  <div class="legend-item">
+    <div class="legend-color" style="background:#fff;border:1px solid #ddd;"></div>
+    <div class="legend-label" style="color:#aaa;">관내 화장장 없음 (관외 요금 적용)</div>
+  </div>
+  <div style="font-size:10px;color:#bbb;padding:8px 4px;line-height:1.7;">
+    ※ 일반 성인 시신 기준<br>
+    ※ 자료: 전국 공설 화장시설 공개 사용료<br>
+    ※ 시설별 감면·협약에 따라 다를 수 있음
+  </div>`;
+</script>
+</body>
+</html>
